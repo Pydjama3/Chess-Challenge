@@ -17,47 +17,59 @@ public class MyBot : IChessBot
         Move[] moves = board.GetLegalMoves();
         
         Move bestMove = Move.NullMove;
+        int bestScore = 0;
         foreach (Move move in moves)
         {
-            if (move.IsCapture)
+            Console.WriteLine("Initial MinMax");
+            board.MakeMove(move);
+            int eval = MinMax(2, move, true, board, new List<Move>(){move});
+            board.UndoMove(move);
+            Console.WriteLine("--------------------");
+            
+
+            if (eval > bestScore)
             {
-                if (piecesValue[move.CapturePieceType] > piecesValue[bestMove.CapturePieceType])
-                {
-                    bestMove = move;
-                }
+                bestScore = eval;
+                bestMove = move;
             }
         }
 
         return !bestMove.IsNull ? bestMove : moves[RandomNumberGenerator.GetInt32(0, moves.Length)];
     }
 
-    private int MinMax(int depth, Move studiedMove, bool maximizingPlayer, Board studiedBoard)
+    private int MinMax(int depth, Move studiedMove, bool maximizingPlayer, Board studiedBoard, List<Move> sequence)
     {
+        Console.WriteLine(String.Join(" -> ", sequence));
         if (depth == 0 || studiedBoard.GetLegalMoves().Length == 0)
         {
             return BoardEval(studiedBoard);
         } if (maximizingPlayer)
         {
-            int value = -9999;
+            var value = -9999;
             foreach (var move in studiedBoard.GetLegalMoves())
             {
+                sequence.Add(move);
                 studiedBoard.MakeMove(move);
-                value = Math.Max(value, MinMax(depth - 1, move, !maximizingPlayer, studiedBoard));
+                value = Math.Max(value, MinMax(depth - 1, move, !maximizingPlayer, studiedBoard, sequence));
+                
+                sequence.RemoveAt(sequence.Count-1);
                 studiedBoard.UndoMove(move);
+                Console.WriteLine(value);
             }
-
             return value;
         }
         else
         {
-            int value = 9999;
+            var value = 9999;
             foreach (var move in studiedBoard.GetLegalMoves())
             {
+                sequence.Add(move);
                 studiedBoard.MakeMove(move);
-                value = Math.Min(value, MinMax(depth - 1, move, !maximizingPlayer, studiedBoard));
+                value = Math.Min(value, MinMax(depth - 1, move, !maximizingPlayer, studiedBoard, sequence));
+                sequence.RemoveAt(sequence.Count-1);
                 studiedBoard.UndoMove(move);
+                Console.WriteLine(value);
             }
-
             return value;
         }
     }
