@@ -48,7 +48,7 @@ public class MyBot : IChessBot
             }
         }
         
-        Console.WriteLine("Min: " + evals.Min() + " —— Max: " + evals.Min());
+        // Console.WriteLine("Min: " + evals.Min() + " —— Max: " + evals.Min());
         // Console.WriteLine(Strings.Join(" ; ", evals.ToArray()));
         Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
 
@@ -133,8 +133,17 @@ public class MyBot : IChessBot
         int total = 0;
         foreach (PieceList pieceList in board.GetAllPieceLists())
         {
-            total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
-                     (pieceList.IsWhitePieceList ? 1 : -1);
+            foreach (Piece piece in pieceList)
+            {
+                total += piecesValue[(int)piece.PieceType] *
+                         (piece.IsWhite ? 1 : -1);
+                foreach (var move in board.GetLegalMoves(true))
+                {
+                    total += piecesValue[(int)move.CapturePieceType] * (piece.IsWhite ? 1 : -1);
+                }
+            }
+            // total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
+                     // (pieceList.IsWhitePieceList ? 1 : -1);
         }
 
         if (board.IsInCheckmate())
