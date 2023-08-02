@@ -1,6 +1,7 @@
 ﻿using ChessChallenge.API;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ChessChallenge.Example
 {
@@ -50,11 +51,11 @@ namespace ChessChallenge.Example
                     }
                 }
             }
-
-            // Console.WriteLine("Min: " + evals.Min() + " —— Max: " + evals.Min());
-            // Console.WriteLine(Strings.Join(" ; ", evals.ToArray()));
-            Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
-
+            
+            Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + BoardEval(board));
+            Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
+            Console.WriteLine("--------------------------------------------");
+            
             return !bestMove.IsNull ? bestMove : moves[new Random().Next(moves.Length)];
         }
 

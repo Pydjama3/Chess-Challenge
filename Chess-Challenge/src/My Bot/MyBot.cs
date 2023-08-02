@@ -8,27 +8,36 @@ public class MyBot : IChessBot
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
 
+    private Dictionary<Move, List<int>> history = new Dictionary<Move, List<int>>();
+    private Move lastMove = Move.NullMove;
+    private int lastEval = 0;
+
     public Move Think(Board board, Timer timer)
     {
         Move[] moves = board.GetLegalMoves();
         amIWhite = board.IsWhiteToMove;
 
-        Move bestMove = Move.NullMove;
+        var boardEval = BoardEval(board);
+
+        if (lastMove != Move.NullMove)
+            if (history.TryGetValue(lastMove, out var element))
+            {
+                element.Add(lastEval - boardEval);
+            }
+            else
+            {
+                history.Add(lastMove, new List<int>() { lastEval - boardEval });
+            }
+
+        Move bestMove = moves[new Random().Next(moves.Length)];
         int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
 
-        List<int> evals = new List<int>();
         foreach (Move move in moves)
         {
-            // Console.WriteLine("MinMax");
-
             board.MakeMove(move);
             var eval = AlphaBeta(3, move, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
             board.UndoMove(move);
-            
-            evals.Add(eval);
 
-            // Console.WriteLine(eval);
-            // Console.WriteLine("--------------------");
 
             if (amIWhite)
             {
@@ -47,12 +56,18 @@ public class MyBot : IChessBot
                 }
             }
         }
-        
-        // Console.WriteLine("Min: " + evals.Min() + " —— Max: " + evals.Min());
-        // Console.WriteLine(Strings.Join(" ; ", evals.ToArray()));
-        Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
 
-        return !bestMove.IsNull ? bestMove : moves[new Random().Next(moves.Length)];
+        lastMove = bestMove;
+        lastEval = boardEval;
+
+        history.TryGetValue(bestMove, out var stats);
+        
+        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + boardEval);
+        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Stats of best " + (stats?.Average() ?? bestScore));
+        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
+        Console.WriteLine("--------------------------------------------");
+
+        return bestMove;
     }
 
     /// <summary>
@@ -78,7 +93,7 @@ public class MyBot : IChessBot
         if (maximizingPlayer)
         {
             var value = Int32.MinValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            foreach (var move in OrderMoves(history, studiedBoard.GetLegalMoves(), false))
             {
                 // sequence.Add(move);
                 studiedBoard.MakeMove(move);
@@ -101,7 +116,7 @@ public class MyBot : IChessBot
         else
         {
             var value = Int32.MaxValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            foreach (var move in OrderMoves(history, studiedBoard.GetLegalMoves(), true))
             {
                 // sequence.Add(move);
                 studiedBoard.MakeMove(move);
@@ -128,29 +143,73 @@ public class MyBot : IChessBot
     /// </summary>
     /// <param name="board">The board to evaluate</param>
     /// <returns></returns>
-    private int BoardEval(Board board)
+    private int BoardEval(Board board, bool evalCheckMate = true, bool evalNextCaptures = true)
     {
         int total = 0;
         foreach (PieceList pieceList in board.GetAllPieceLists())
         {
-            foreach (Piece piece in pieceList)
-            {
-                total += piecesValue[(int)piece.PieceType] *
-                         (piece.IsWhite ? 1 : -1);
-                foreach (var move in board.GetLegalMoves(true))
-                {
-                    total += piecesValue[(int)move.CapturePieceType] * (piece.IsWhite ? 1 : -1);
-                }
-            }
-            // total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
-                     // (pieceList.IsWhitePieceList ? 1 : -1);
+            // foreach (Piece piece in pieceList)
+            // {
+            // total += piecesValue[(int)piece.PieceType] *
+            // (piece.IsWhite ? 1 : -1);
+            // }
+            total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
+                     (pieceList.IsWhitePieceList ? 1 : -1);
         }
 
-        if (board.IsInCheckmate())
+        if (evalNextCaptures)
+            foreach (var move in board.GetLegalMoves(true))
+            {
+                total += piecesValue[(int)move.CapturePieceType] * (board.GetPiece(move.StartSquare).IsWhite ? 1 : -1) /
+                         2;
+            }
+
+        if (evalCheckMate && board.IsInCheckmate())
         {
-            total += board.IsWhiteToMove != amIWhite ? (piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1)) : -(piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1));
-        } 
+            total += board.IsWhiteToMove != amIWhite
+                ? (piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1))
+                : -(piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1));
+        }
 
         return total;
+    }
+
+    Move[] OrderMoves(Dictionary<Move, List<int>> history, Move[] moves, bool ascending = true)
+    {
+        if (history.Count > 0)
+        {
+            List<Move> orderedMoves = new List<Move>();
+
+            Dictionary<Move, List<int>> orderedHistory;
+            if (ascending)
+            {
+                orderedHistory = history.OrderBy(move => move.Value.Average()).ToDictionary(x => x.Key, x => x.Value);
+            }
+            else
+            {
+                orderedHistory = history.OrderByDescending(move => move.Value.Average())
+                    .ToDictionary(x => x.Key, x => x.Value);
+            }
+
+            foreach (var playedMove in orderedHistory.Keys)
+            {
+                if (moves.Contains(playedMove))
+                {
+                    orderedMoves.Add(playedMove);
+                }
+            }
+
+            foreach (Move move in moves)
+            {
+                if (!orderedMoves.Contains(move))
+                    orderedMoves.Add(move);
+            }
+
+            return orderedMoves.ToArray();
+        }
+        else
+        {
+            return moves;
+        }
     }
 }
