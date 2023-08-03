@@ -3,14 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using ChessChallenge.API;
 
-public class MyBot : IChessBot
+public class MyBotAlphaBetaComplexEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
-
-    private Dictionary<Move, List<int>> history = new Dictionary<Move, List<int>>();
-    private Move lastMove = Move.NullMove;
-    private int lastEval = 0;
 
     public Move Think(Board board, Timer timer)
     {
@@ -19,47 +15,35 @@ public class MyBot : IChessBot
 
         var boardEval = BoardEval(board);
 
-        if (lastMove != Move.NullMove)
-            if (history.TryGetValue(lastMove, out var element))
-            {
-                element.Add(lastEval - boardEval);
-            }
-            else
-            {
-                history.Add(lastMove, new List<int>() { lastEval - boardEval });
-            }
-
         Move bestMove = moves[new Random().Next(moves.Length)];
         int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
-        
+
         foreach (Move move in moves)
         {
             board.MakeMove(move);
-            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board);
+            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
             board.UndoMove(move);
 
 
             if (amIWhite)
             {
-                if (eval < bestScore) continue;
-                bestScore = eval;
-                bestMove = move;
+                if (eval >= bestScore)
+                {
+                    bestScore = eval;
+                    bestMove = move;
+                }
             }
             else
             {
-                if (eval > bestScore) continue;
-                bestScore = eval;
-                bestMove = move;
+                if (eval <= bestScore)
+                {
+                    bestScore = eval;
+                    bestMove = move;
+                }
             }
         }
 
-        lastMove = bestMove;
-        lastEval = boardEval;
-
-        history.TryGetValue(bestMove, out var stats);
-        
         Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + boardEval);
-        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Stats of best " + (stats?.Average() ?? bestScore));
         Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
         Console.WriteLine("--------------------------------------------");
 
@@ -76,13 +60,10 @@ public class MyBot : IChessBot
     /// <param name="studiedBoard">The board on which the move is played</param>
     /// <returns></returns>
     private int AlphaBeta(int depth, bool maximizingPlayer, int alpha, int beta,
-        Board studiedBoard)
+        Board studiedBoard /*, List<Move> sequence*/)
     {
-        Span<Move> moves = stackalloc Move[128];
-        studiedBoard.GetLegalMovesNonAlloc(ref moves);
-        
         // Return final evaluation if this node is at the end of a branch or the max depth has been reached
-        if (depth == 0 || moves.Length == 0)
+        if (depth == 0 || studiedBoard.GetLegalMoves().Length == 0)
         {
             return BoardEval(studiedBoard);
         }
@@ -91,12 +72,14 @@ public class MyBot : IChessBot
         if (maximizingPlayer)
         {
             var value = Int32.MinValue;
-            foreach (var move in moves/*OrderMoves(history, studiedBoard.GetLegalMoves(), false)*/)
+            foreach (var move in studiedBoard.GetLegalMoves())
             {
+                // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Max(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard));
+                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
                 studiedBoard.UndoMove(move);
+                // sequence.RemoveAt(sequence.Count - 1);
 
                 if (value > beta)
                 {
@@ -112,12 +95,14 @@ public class MyBot : IChessBot
         else
         {
             var value = Int32.MaxValue;
-            foreach (var move in moves/*OrderMoves(history, studiedBoard.GetLegalMoves(), true)*/)
+            foreach (var move in studiedBoard.GetLegalMoves())
             {
+                // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Min(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard));
+                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
                 studiedBoard.UndoMove(move);
+                // sequence.RemoveAt(sequence.Count - 1);
 
                 if (value < alpha)
                 {
@@ -149,16 +134,12 @@ public class MyBot : IChessBot
         }
 
         if (evalNextCaptures)
-        {
-            Span<Move> moves = stackalloc Move[128];
-            board.GetLegalMovesNonAlloc(ref moves, true);
-
-            foreach (var move in moves)
+            foreach (var move in board.GetLegalMoves(true))
             {
                 total += piecesValue[(int)move.CapturePieceType] * (board.GetPiece(move.StartSquare).IsWhite ? 1 : -1) /
                          2;
             }
-        }
+
         if (evalCheckMate && board.IsInCheckmate())
         {
             total += board.IsWhiteToMove != amIWhite
@@ -167,42 +148,5 @@ public class MyBot : IChessBot
         }
 
         return total;
-    }
-
-    Move[] OrderMoves(Dictionary<Move, List<int>> history, Move[] moves, bool ascending = true)
-    {
-        if (history.Count > 0)
-        {
-            List<Move> orderedMoves = new List<Move>();
-
-            Dictionary<Move, List<int>> orderedHistory;
-            if (ascending)
-            {
-                orderedHistory = history.OrderBy(move => move.Value.Average()).ToDictionary(x => x.Key, x => x.Value);
-            }
-            else
-            {
-                orderedHistory = history.OrderByDescending(move => move.Value.Average())
-                    .ToDictionary(x => x.Key, x => x.Value);
-            }
-
-            foreach (var playedMove in orderedHistory.Keys)
-            {
-                if (moves.Contains(playedMove))
-                {
-                    orderedMoves.Add(playedMove);
-                }
-            }
-
-            foreach (Move move in moves)
-            {
-                if (!orderedMoves.Contains(move))
-                    orderedMoves.Add(move);
-            }
-
-            return orderedMoves.ToArray();
-        }
-
-        return moves;
     }
 }
