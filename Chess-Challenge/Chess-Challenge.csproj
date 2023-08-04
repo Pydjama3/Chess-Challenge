@@ -44,6 +44,12 @@
     <Compile Update="src\My Bot\MyBotMiniMaxSimpleEval.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
+    <Compile Update="src\My Bot\MyBotAlphaBetaComplexEvalOrderV2.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
+    <Compile Update="src\My Bot\MyBotAlphBetaComplexEvalOnlySpan.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

@@ -43,8 +43,8 @@ public class MyBotMiniMaxSimpleEval : IChessBot
             }
         }
 
-        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + boardEval);
-        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
+        Console.WriteLine(amIWhite ? "---White---" : "---Black---");
+        Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
         Console.WriteLine("--------------------------------------------");
 
         return bestMove;

@@ -5,8 +5,8 @@ using System.Linq;
 
 namespace ChessChallenge.Example
 {
-    // A simple bot that can spot mate in one, and always captures the most valuable piece it can.
-    // Plays randomly otherwise.
+    // Uses the AlphaBeta algorithm and a simple board evaluation function to grade game situations.
+    // Otherwise uses random.
     public class EvilBot : IChessBot
     {
         int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
@@ -20,19 +20,12 @@ namespace ChessChallenge.Example
             Move bestMove = Move.NullMove;
             int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
 
-            List<int> evals = new List<int>();
             foreach (Move move in moves)
             {
-                // Console.WriteLine("MinMax");
 
                 board.MakeMove(move);
                 var eval = AlphaBeta(3, move, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
                 board.UndoMove(move);
-
-                evals.Add(eval);
-
-                // Console.WriteLine(eval);
-                // Console.WriteLine("--------------------");
 
                 if (amIWhite)
                 {
@@ -52,9 +45,10 @@ namespace ChessChallenge.Example
                 }
             }
             
-            Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + BoardEval(board));
-            Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
-            Console.WriteLine("--------------------------------------------");
+            // Console.WriteLine(amIWhite ? "White" : "Black") 
+            // Console.WriteLine("Current board evaluation: " + BoardEval(board));
+            // Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
+            // Console.WriteLine("--------------------------------------------");
             
             return !bestMove.IsNull ? bestMove : moves[new Random().Next(moves.Length)];
         }

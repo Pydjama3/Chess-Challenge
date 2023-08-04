@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
-public class MyBot : IChessBot
+public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
@@ -61,7 +61,7 @@ public class MyBot : IChessBot
 
         lastMove = bestMove;
         lastEval = boardEval;
-        
+
         stopwatch.Stop();
         
         history.TryGetValue(bestMove, out var stats);
@@ -87,8 +87,6 @@ public class MyBot : IChessBot
     private int AlphaBeta(int depth, bool maximizingPlayer, int alpha, int beta,
         Board studiedBoard)
     {
-        // Span<Move> moves = stackalloc Move[128];
-        // studiedBoard.GetLegalMovesNonAlloc(ref moves);
 
         var moves = studiedBoard.GetLegalMoves();
 

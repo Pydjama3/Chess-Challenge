@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
@@ -10,10 +11,13 @@ public class MyBotAlphaBetaComplexEval : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+        
+        //////////////////////////////////////////////////
+        
         Move[] moves = board.GetLegalMoves();
         amIWhite = board.IsWhiteToMove;
-
-        var boardEval = BoardEval(board);
 
         Move bestMove = moves[new Random().Next(moves.Length)];
         int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
@@ -43,8 +47,11 @@ public class MyBotAlphaBetaComplexEval : IChessBot
             }
         }
 
-        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Current board evaluation: " + boardEval);
-        Console.WriteLine((amIWhite ? "White" : "Black") + " —— Best " + bestMove + " with score of " + bestScore);
+        stopwatch.Stop();
+        
+        // Console.WriteLine(amIWhite ? "---White---" : "---Black---");
+        // Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
+        Console.WriteLine(stopwatch.ElapsedMilliseconds);
         Console.WriteLine("--------------------------------------------");
 
         return bestMove;
