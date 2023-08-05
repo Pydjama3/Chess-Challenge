@@ -50,6 +50,9 @@
     <Compile Update="src\My Bot\MyBotAlphBetaComplexEvalOnlySpan.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
+    <Compile Update="src\My Bot\MyBotNegaScoutComplexEval.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

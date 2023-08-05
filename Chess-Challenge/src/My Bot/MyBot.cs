@@ -11,7 +11,7 @@ public class MyBot : IChessBot
 
     private Dictionary<Move, List<int>> history = new();
     private Move lastMove = Move.NullMove;
-    private int lastEval = 0;
+    private int lastEval;
 
     public Move Think(Board board, Timer timer)
     {
