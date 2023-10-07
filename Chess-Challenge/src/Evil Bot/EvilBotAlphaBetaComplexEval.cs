@@ -6,7 +6,7 @@ using ChessChallenge.API;
 
 
 // AlphaBeta + Complex Eval
-public class MyBotAlphaBetaComplexEval : IChessBot
+public class EvilBotAlphaBetaComplexEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;

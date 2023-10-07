@@ -5,56 +5,77 @@ using System.Linq;
 using ChessChallenge.API;
 
 
-// AlphaBeta + Complex Eval
-public class MyBotAlphaBetaComplexEval : IChessBot
+// AlphaBeta + Complex Eval + OrderMoves + Span memory alloc (in eval next captures and initial)
+// Current My Bot
+public class EvilBotAlphaBetaComplexEvalOrderV2 : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
 
+    private Dictionary<Move, List<int>> history = new();
+    private Move lastMove = Move.NullMove;
+    private int lastEval;
+
     public Move Think(Board board, Timer timer)
     {
-        Stopwatch stopwatch = new();
-        stopwatch.Start();
+        // Stopwatch stopwatch = new();
+        // stopwatch.Start();
         
         //////////////////////////////////////////////////
         
-        Move[] moves = board.GetLegalMoves();
+        Span<Move> moves = stackalloc Move[128];
+        board.GetLegalMovesNonAlloc(ref moves);
+
         amIWhite = board.IsWhiteToMove;
 
+        var boardEval = BoardEval(board);
+
+        if (lastMove != Move.NullMove)
+            if (history.TryGetValue(lastMove, out var element))
+            {
+                element.Add(lastEval - boardEval);
+            }
+            else
+            {
+                history.Add(lastMove, new List<int> { lastEval - boardEval });
+            }
+
         Move bestMove = moves[new Random().Next(moves.Length)];
-        int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
+        int bestScore = amIWhite ? int.MinValue : int.MaxValue;
 
         foreach (Move move in moves)
         {
             board.MakeMove(move);
-            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
+            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board);
             board.UndoMove(move);
 
 
             if (amIWhite)
             {
-                if (eval >= bestScore)
-                {
-                    bestScore = eval;
-                    bestMove = move;
-                }
+                if (eval < bestScore) continue;
+                bestScore = eval;
+                bestMove = move;
             }
             else
             {
-                if (eval <= bestScore)
-                {
-                    bestScore = eval;
-                    bestMove = move;
-                }
+                if (eval > bestScore) continue;
+                bestScore = eval;
+                bestMove = move;
             }
         }
 
-        stopwatch.Stop();
+        lastMove = bestMove;
+        lastEval = boardEval;
         
+        // stopwatch.Stop();
+        
+        history.TryGetValue(bestMove, out var stats);
+
         // Console.WriteLine(amIWhite ? "---White---" : "---Black---");
+        // Console.WriteLine("Stats of best " + (stats?.Average() ?? bestScore));
         // Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
-        Console.WriteLine(stopwatch.ElapsedMilliseconds);
-        Console.WriteLine("--------------------------------------------");
+        // Console.WriteLine("Elapsed time" + stopwatch.ElapsedMilliseconds);
+        // Console.WriteLine("--------------------------------------------");
 
         return bestMove;
     }
@@ -69,10 +90,13 @@ public class MyBotAlphaBetaComplexEval : IChessBot
     /// <param name="studiedBoard">The board on which the move is played</param>
     /// <returns></returns>
     private int AlphaBeta(int depth, bool maximizingPlayer, int alpha, int beta,
-        Board studiedBoard /*, List<Move> sequence*/)
+        Board studiedBoard)
     {
+
+        var moves = studiedBoard.GetLegalMoves();
+
         // Return final evaluation if this node is at the end of a branch or the max depth has been reached
-        if (depth == 0 || studiedBoard.GetLegalMoves().Length == 0)
+        if (depth == 0 || moves.Length == 0)
         {
             return BoardEval(studiedBoard);
         }
@@ -81,14 +105,12 @@ public class MyBotAlphaBetaComplexEval : IChessBot
         if (maximizingPlayer)
         {
             var value = Int32.MinValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            foreach (var move in maximizingPlayer==amIWhite ? OrderMoves(history, moves, false): moves)
             {
-                // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Max(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
+                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard));
                 studiedBoard.UndoMove(move);
-                // sequence.RemoveAt(sequence.Count - 1);
 
                 if (value > beta)
                 {
@@ -104,14 +126,12 @@ public class MyBotAlphaBetaComplexEval : IChessBot
         else
         {
             var value = Int32.MaxValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            foreach (var move in maximizingPlayer==amIWhite ? OrderMoves(history, moves, false): moves)
             {
-                // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Min(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
+                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard));
                 studiedBoard.UndoMove(move);
-                // sequence.RemoveAt(sequence.Count - 1);
 
                 if (value < alpha)
                 {
@@ -135,27 +155,54 @@ public class MyBotAlphaBetaComplexEval : IChessBot
     /// <returns></returns>
     private int BoardEval(Board board, bool evalCheckMate = true, bool evalNextCaptures = true)
     {
+        int multiplier = amIWhite ? 1 : -1;
+        
+        var pieceLists = board.GetAllPieceLists();
+
         int total = 0;
-        foreach (PieceList pieceList in board.GetAllPieceLists())
+        foreach (PieceList pieceList in pieceLists)
         {
             total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
                      (pieceList.IsWhitePieceList ? 1 : -1);
         }
 
         if (evalNextCaptures)
-            foreach (var move in board.GetLegalMoves(true))
+        {
+            Span<Move> moves = stackalloc Move[128];
+            board.GetLegalMovesNonAlloc(ref moves, true);
+
+            foreach (var move in moves)
             {
                 total += piecesValue[(int)move.CapturePieceType] * (board.GetPiece(move.StartSquare).IsWhite ? 1 : -1) /
                          2;
             }
+        }
 
         if (evalCheckMate && board.IsInCheckmate())
         {
             total += board.IsWhiteToMove != amIWhite
-                ? (piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1))
-                : -(piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1));
+                ? piecesValue[(int)PieceType.King] * multiplier
+                : -piecesValue[(int)PieceType.King] * multiplier;
         }
 
         return total;
+    }
+
+    Move[] OrderMoves(Dictionary<Move, List<int>> history, Move[] moves, bool ascending = true)
+    {
+        var sorter = (Move move) => history.TryGetValue(move, out var stats) ? stats.Average() : ascending ? int.MaxValue : int.MinValue;
+
+        if (history.Count > 0)
+        {
+            if (ascending)
+                return moves.ToList()
+                    .OrderBy(sorter)
+                    .ToArray();
+            return moves.ToList()
+                .OrderByDescending(sorter)
+                .ToArray();
+        }
+
+        return moves;
     }
 }

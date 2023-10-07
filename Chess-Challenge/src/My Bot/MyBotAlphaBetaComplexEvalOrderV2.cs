@@ -4,6 +4,9 @@ using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
+
+// AlphaBeta + Complex Eval + OrderMoves + Span memory alloc (in eval next captures and initial)
+// Current My Bot
 public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
@@ -11,16 +14,18 @@ public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
 
     private Dictionary<Move, List<int>> history = new();
     private Move lastMove = Move.NullMove;
-    private int lastEval = 0;
+    private int lastEval;
 
     public Move Think(Board board, Timer timer)
     {
-        Stopwatch stopwatch = new();
-        stopwatch.Start();
+        // Stopwatch stopwatch = new();
+        // stopwatch.Start();
         
         //////////////////////////////////////////////////
         
-        Move[] moves = board.GetLegalMoves();
+        Span<Move> moves = stackalloc Move[128];
+        board.GetLegalMovesNonAlloc(ref moves);
+
         amIWhite = board.IsWhiteToMove;
 
         var boardEval = BoardEval(board);
@@ -61,15 +66,15 @@ public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
 
         lastMove = bestMove;
         lastEval = boardEval;
-
-        stopwatch.Stop();
+        
+        // stopwatch.Stop();
         
         history.TryGetValue(bestMove, out var stats);
 
         // Console.WriteLine(amIWhite ? "---White---" : "---Black---");
         // Console.WriteLine("Stats of best " + (stats?.Average() ?? bestScore));
         // Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
-        Console.WriteLine(stopwatch.ElapsedMilliseconds);
+        // Console.WriteLine("Elapsed time" + stopwatch.ElapsedMilliseconds);
         // Console.WriteLine("--------------------------------------------");
 
         return bestMove;
@@ -100,7 +105,7 @@ public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
         if (maximizingPlayer)
         {
             var value = Int32.MinValue;
-            foreach (var move in /*moves*/ OrderMoves(history, moves, false))
+            foreach (var move in maximizingPlayer==amIWhite ? OrderMoves(history, moves, false): moves)
             {
                 studiedBoard.MakeMove(move);
                 value = Math.Max(value,
@@ -121,7 +126,7 @@ public class MyBotAlphaBetaComplexEvalOrderV2 : IChessBot
         else
         {
             var value = Int32.MaxValue;
-            foreach (var move in /*moves*/ OrderMoves(history, moves, true))
+            foreach (var move in maximizingPlayer==amIWhite ? OrderMoves(history, moves, false): moves)
             {
                 studiedBoard.MakeMove(move);
                 value = Math.Min(value,

@@ -3,10 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+// AlphaBeta + Simple Eval
 namespace ChessChallenge.Example
 {
-    // Uses the AlphaBeta algorithm and a simple board evaluation function to grade game situations.
-    // Otherwise uses random.
     public class EvilBot : IChessBot
     {
         int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };

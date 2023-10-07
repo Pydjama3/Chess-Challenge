@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using ChessChallenge.API;
 
+
+// MiniMax + Simple Eval
 public class MyBotMiniMaxSimpleEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };

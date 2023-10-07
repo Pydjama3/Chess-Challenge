@@ -5,8 +5,8 @@ using System.Linq;
 using ChessChallenge.API;
 
 
-// AlphaBeta + Complex Eval
-public class MyBotAlphaBetaComplexEval : IChessBot
+// NegaScout + Complex Eval
+public class EvilBotNegaScoutComplexEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
@@ -27,7 +27,7 @@ public class MyBotAlphaBetaComplexEval : IChessBot
         foreach (Move move in moves)
         {
             board.MakeMove(move);
-            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
+            var eval = NegaScout(3, -1000, 1000, board /*, new List<Move>() { move }*/);
             board.UndoMove(move);
 
 
@@ -60,15 +60,14 @@ public class MyBotAlphaBetaComplexEval : IChessBot
     }
 
     /// <summary>
-    /// A move evaluation function using the AlphaBeta algorithm
+    /// A move evaluation function using the NegaScout algorithm
     /// </summary>
     /// <param name="depth">Depth of the tree to explore</param>
-    /// <param name="maximizingPlayer">If the evaluation is maximized in this recursion (changes in the next recursion)</param>
     /// <param name="alpha">Set initially to a very low value (ex: -inf ^_^)</param>
     /// <param name="beta">Set initially to a very high value (ex: inf ^_^)</param>
     /// <param name="studiedBoard">The board on which the move is played</param>
     /// <returns></returns>
-    private int AlphaBeta(int depth, bool maximizingPlayer, int alpha, int beta,
+    private int NegaScout(int depth, int alpha, int beta,
         Board studiedBoard /*, List<Move> sequence*/)
     {
         // Return final evaluation if this node is at the end of a branch or the max depth has been reached
@@ -77,52 +76,24 @@ public class MyBotAlphaBetaComplexEval : IChessBot
             return BoardEval(studiedBoard);
         }
 
-        // Maximal evaluation
-        if (maximizingPlayer)
+        var moves = studiedBoard.GetLegalMoves();
+        int score;
+        bool first = true;
+        
+        foreach (var move in moves)
         {
-            var value = Int32.MinValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            studiedBoard.MakeMove(move);
+            if (first)
             {
-                // sequence.Add(move);
-                studiedBoard.MakeMove(move);
-                value = Math.Max(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
-                studiedBoard.UndoMove(move);
-                // sequence.RemoveAt(sequence.Count - 1);
-
-                if (value > beta)
-                {
-                    break;
-                }
-
-                alpha = Math.Max(alpha, value);
+                score = -NegaScout(depth - 1, -alpha, -beta, studiedBoard);
             }
-
-            return value;
-        }
-        // Minimize evaluation
-        else
-        {
-            var value = Int32.MaxValue;
-            foreach (var move in studiedBoard.GetLegalMoves())
+            else
             {
-                // sequence.Add(move);
-                studiedBoard.MakeMove(move);
-                value = Math.Min(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
-                studiedBoard.UndoMove(move);
-                // sequence.RemoveAt(sequence.Count - 1);
-
-                if (value < alpha)
-                {
-                    break;
-                }
-
-                beta = Math.Min(beta, value);
+                // TODO: To be completed and finished
             }
-
-            return value;
         }
+
+        return alpha;
     }
 
     /// <summary>

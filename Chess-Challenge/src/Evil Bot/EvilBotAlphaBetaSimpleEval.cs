@@ -1,25 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
 
-// AlphaBeta + Complex Eval
-public class MyBotAlphaBetaComplexEval : IChessBot
+// AlphaBeta + Simple Eval
+//Current EvilBot
+public class EvilBotAlphaBetaSimpleEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
     bool amIWhite;
 
     public Move Think(Board board, Timer timer)
     {
-        Stopwatch stopwatch = new();
-        stopwatch.Start();
-        
-        //////////////////////////////////////////////////
-        
         Move[] moves = board.GetLegalMoves();
         amIWhite = board.IsWhiteToMove;
+
+        var boardEval = BoardEval(board);
 
         Move bestMove = moves[new Random().Next(moves.Length)];
         int bestScore = amIWhite ? Int32.MinValue : Int32.MaxValue;
@@ -27,7 +24,7 @@ public class MyBotAlphaBetaComplexEval : IChessBot
         foreach (Move move in moves)
         {
             board.MakeMove(move);
-            var eval = AlphaBeta(3, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
+            var eval = AlphaBeta(3, move, !amIWhite, -1000, 1000, board /*, new List<Move>() { move }*/);
             board.UndoMove(move);
 
 
@@ -48,12 +45,9 @@ public class MyBotAlphaBetaComplexEval : IChessBot
                 }
             }
         }
-
-        stopwatch.Stop();
         
-        // Console.WriteLine(amIWhite ? "---White---" : "---Black---");
-        // Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
-        Console.WriteLine(stopwatch.ElapsedMilliseconds);
+        Console.WriteLine(amIWhite ? "---White---" : "---Black---");
+        Console.WriteLine("Best " + bestMove + " with score of " + bestScore);
         Console.WriteLine("--------------------------------------------");
 
         return bestMove;
@@ -63,12 +57,13 @@ public class MyBotAlphaBetaComplexEval : IChessBot
     /// A move evaluation function using the AlphaBeta algorithm
     /// </summary>
     /// <param name="depth">Depth of the tree to explore</param>
+    /// <param name="studiedMove">The move to evaluate</param>
     /// <param name="maximizingPlayer">If the evaluation is maximized in this recursion (changes in the next recursion)</param>
     /// <param name="alpha">Set initially to a very low value (ex: -inf ^_^)</param>
     /// <param name="beta">Set initially to a very high value (ex: inf ^_^)</param>
     /// <param name="studiedBoard">The board on which the move is played</param>
     /// <returns></returns>
-    private int AlphaBeta(int depth, bool maximizingPlayer, int alpha, int beta,
+    private int AlphaBeta(int depth, Move studiedMove, bool maximizingPlayer, int alpha, int beta,
         Board studiedBoard /*, List<Move> sequence*/)
     {
         // Return final evaluation if this node is at the end of a branch or the max depth has been reached
@@ -86,7 +81,7 @@ public class MyBotAlphaBetaComplexEval : IChessBot
                 // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Max(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
+                    AlphaBeta(depth - 1, move, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
                 studiedBoard.UndoMove(move);
                 // sequence.RemoveAt(sequence.Count - 1);
 
@@ -109,7 +104,7 @@ public class MyBotAlphaBetaComplexEval : IChessBot
                 // sequence.Add(move);
                 studiedBoard.MakeMove(move);
                 value = Math.Min(value,
-                    AlphaBeta(depth - 1, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
+                    AlphaBeta(depth - 1, move, !maximizingPlayer, alpha, beta, studiedBoard /*, sequence*/));
                 studiedBoard.UndoMove(move);
                 // sequence.RemoveAt(sequence.Count - 1);
 
@@ -130,10 +125,8 @@ public class MyBotAlphaBetaComplexEval : IChessBot
     /// Checkmates count as a king (ex: white checkmated = board_evaluation - white_king).
     /// </summary>
     /// <param name="board">The board to evaluate</param>
-    /// <param name="evalCheckMate">If the checkmates should be checked</param>
-    /// <param name="evalNextCaptures">If the next captures should be checked</param>
     /// <returns></returns>
-    private int BoardEval(Board board, bool evalCheckMate = true, bool evalNextCaptures = true)
+    private int BoardEval(Board board)
     {
         int total = 0;
         foreach (PieceList pieceList in board.GetAllPieceLists())
@@ -141,21 +134,6 @@ public class MyBotAlphaBetaComplexEval : IChessBot
             total += piecesValue[(int)pieceList.TypeOfPieceInList] * pieceList.Count *
                      (pieceList.IsWhitePieceList ? 1 : -1);
         }
-
-        if (evalNextCaptures)
-            foreach (var move in board.GetLegalMoves(true))
-            {
-                total += piecesValue[(int)move.CapturePieceType] * (board.GetPiece(move.StartSquare).IsWhite ? 1 : -1) /
-                         2;
-            }
-
-        if (evalCheckMate && board.IsInCheckmate())
-        {
-            total += board.IsWhiteToMove != amIWhite
-                ? (piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1))
-                : -(piecesValue[(int)PieceType.King] * (amIWhite ? 1 : -1));
-        }
-
         return total;
     }
 }

@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
+
+// AlphaBeta + Complex Eval + Span memory alloc
 public class MyBotAlphBetaComplexEvalOnlySpan : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };

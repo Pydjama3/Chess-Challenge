@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
 
+
+// NegaScout + Complex Eval
 public class MyBotNegaScoutComplexEval : IChessBot
 {
     int[] piecesValue = { 0, 10, 30, 30, 50, 90, 900 };
